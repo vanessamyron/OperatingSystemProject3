@@ -8,12 +8,42 @@ typedef struct
     int numTokens;
 } instruction;
 
+struct BPB{	//Let me know if any of the numbers I got seem wrong and let me know
+	unsigned short BPB_BytsPerSec;	//Offset = 11, Size = 2 Bytes (Should be 0x0200, this was given in the slides)
+	unsigned char BPB_SecPerClus;	//Offset = 13, Size = 1 Byte	(I got 0x01)
+	unsigned short BPB_RsvdSecCnt;	//Offset = 14, Size = 2 Bytes	(I got 0x0020 but I'm not  sure if this is right
+	unsigned char BPB_NumFATs;	//Offset = 16, Size = 1 Byte	(I got 0x02)
+	unsigned long BPB_FATSz32;	//OffSet = 32, Size = 4 Bytes	(I got 0x00200000)
+	unsigned long BPB_RootClus;	//Offset = 36, Size = 4 Bytes	(I got 0x000003F1)
+	unsigned long BPB_TotSec32;	//Offset = 44, Size = 4 Bytes	(I got 0x00000002)
+} _attribute_((packed));
+
+struct DirEntry{
+	unsigned char DIR_name[11];
+	unsigned char DIR_Attributes;
+	unsigned char DIR_NTRes;
+	unsigned char DIR_CrtTimeTenth);
+	unsigned short DIR_CrtTime;
+	unsigned short DIR_CrtDate;
+	unsigned short DIR_LstAccDate;
+	unsigned short DIR_FstClusHI;
+	unsigned short DIR_WrtTime;
+	unsigned short DIR_WrtDate;
+	unsigned short DIR_FstClusLO;
+	unsigned long DIR_FileSize;
+	
+} _attribute_((packed));
+
 void addToken(instruction* instr_ptr, char* tok);
 void printTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
 
 int main() {
+	
+
+	
+	//Variables for Intake
     char* token = NULL;
     char* temp = NULL;
 

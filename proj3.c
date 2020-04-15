@@ -16,13 +16,13 @@ struct BPB{	//Let me know if any of the numbers I got seem wrong and let me know
 	unsigned long BPB_FATSz32;	//OffSet = 32, Size = 4 Bytes	(I got 0x00200000)
 	unsigned long BPB_RootClus;	//Offset = 36, Size = 4 Bytes	(I got 0x000003F1)
 	unsigned long BPB_TotSec32;	//Offset = 44, Size = 4 Bytes	(I got 0x00000002)
-} _attribute_((packed));
+} __attribute__((packed));
 
 struct DirEntry{
 	unsigned char DIR_name[11];
 	unsigned char DIR_Attributes;
 	unsigned char DIR_NTRes;
-	unsigned char DIR_CrtTimeTenth);
+	unsigned char DIR_CrtTimeTenth;
 	unsigned short DIR_CrtTime;
 	unsigned short DIR_CrtDate;
 	unsigned short DIR_LstAccDate;
@@ -32,7 +32,7 @@ struct DirEntry{
 	unsigned short DIR_FstClusLO;
 	unsigned long DIR_FileSize;
 	
-} _attribute_((packed));
+} __attribute__((packed));
 
 void addToken(instruction* instr_ptr, char* tok);
 void printTokens(instruction* instr_ptr);

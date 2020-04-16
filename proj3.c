@@ -73,7 +73,7 @@ int main() {
 	pread(f, &BPB_RootClus, 4, 44);
 	close(f);
 
-
+	image = fopen("fat32.img", "r+b");
 
 
 
@@ -102,20 +102,20 @@ int main() {
 	
 
 	while (1) {
-	// for the current environment info
-	char *user = getenv("USER");
-	char *machine = getenv("MACHINE");
-	char *pwd = getenv("PWD");
-		
-	printf("%s@%s:", user, machine);
+		// for the current environment info
+		char *user = getenv("USER");
+		char *machine = getenv("MACHINE");
+		char *pwd = getenv("PWD");
+			
+		printf("%s@%s:", user, machine);
 
-		int j = 0;
-	while(j < environment.curr)
-	{
-	printf("%s/", j == 0 ? "" : environment.curr_path[j]);
-	j++;
-	}
-	printf("> ");
+			int j = 0;
+		while(j < environment.curr)
+		{
+			printf("%s/", j == 0 ? "" : environment.curr_path[j]);
+			j++;
+		}
+		printf("> ");
 
 
 		// loop reads character sequences separated by whitespace
@@ -167,7 +167,13 @@ int main() {
 		
 		
 		if(strcmp(instr.tokens[0], "exit") == 0){
-			clearInstruction(&instr);
+			if(fclose(image) != 0){
+				printf("There was a problem close fat32.img\n");
+			}
+			else{
+				clearInstruction(&instr);
+				printf("Successfully Exited\n");
+			}
 			break;
 		}
 
@@ -180,36 +186,38 @@ int main() {
 			printf("%s%u\n", "FAT size: ", BPB_FATSz32);
 			printf("%s%u\n", "Root Cluster: ", BPB_RootClus);
 		}
-
-		clearInstruction(&instr);
-	}
-	 if(strcmp(instr.tokens[0], "ls") == 0)
-	{
-	 if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
-	{	
-		 
-		if(strcmp(instr.tokens[1], "..") == 0)
+		
+		if(strcmp(instr.tokens[0], "ls") == 0)
 		{
-			if(environment.curr -2 != 0)
-			{
-			 listDirectory(BPB_RootClus);
+		if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
+			{	
+			 
+				if(strcmp(instr.tokens[1], "..") == 0)
+				{
+					if(environment.curr -2 != 0)
+					{
+					 listDirectory(BPB_RootClus);
+					}
+					else		
+					listDirectory(environment.curr_clust_path[environment.curr-2]);
+					//listDirectory(BPB_RootClus);
+							
+				}
+				else 	
+				{// I would need the cd function for this 
+				//lisDir(environment.curr_clus, instr.tokens[1]);
+				}
 			}
-	else		
-		listDirectory(environment.curr_clust_path[environment.curr-2]);
-			//listDirectory(BPB_RootClus);
-					
-		}
-	else 	
-		{// I would need the cd function for this 
-		//lisDir(environment.curr_clus, instr.tokens[1]);
-		}
-	}
 		else 
 		{
 			listDirectory(environment.curr_clust_num);
 		}	
-	 clearInstruction(&instr);
+		
+		}
+
+		clearInstruction(&instr);
 	}
+	
 	
 
 

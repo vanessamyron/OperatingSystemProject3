@@ -1,22 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 typedef struct
 {
     char** tokens;
     int numTokens;
 } instruction;
-
-struct BPB{	//Let me know if any of the numbers I got seem wrong and let me know
-	unsigned short BPB_BytsPerSec;	//Offset = 11, Size = 2 Bytes (Should be 0x0200, this was given in the slides)
-	unsigned char BPB_SecPerClus;	//Offset = 13, Size = 1 Byte	(I got 0x01)
-	unsigned short BPB_RsvdSecCnt;	//Offset = 14, Size = 2 Bytes	(I got 0x0020 but I'm not  sure if this is right
-	unsigned char BPB_NumFATs;	//Offset = 16, Size = 1 Byte	(I got 0x02)
-	unsigned long BPB_FATSz32;	//OffSet = 32, Size = 4 Bytes	(I got 0x00200000)
-	unsigned long BPB_RootClus;	//Offset = 36, Size = 4 Bytes	(I got 0x000003F1)
-	unsigned long BPB_TotSec32;	//Offset = 44, Size = 4 Bytes	(I got 0x00000002)
-} __attribute__((packed));
 
 struct DirEntry{
 	unsigned char DIR_name[11];
@@ -41,8 +33,26 @@ void addNull(instruction* instr_ptr);
 
 int main() {
 	
-
 	
+	unsigned short BPB_BytsPerSec;	
+	unsigned char BPB_SecPerClus;	
+	unsigned short BPB_RsvdSecCnt;	
+	unsigned char BPB_NumFATs;	
+	unsigned int BPB_TotSec32;
+	unsigned int BPB_FATSz32;	
+	unsigned int BPB_RootClus;	
+		
+	int f = open("fat32.img", O_RDWR);
+	
+	pread(f, &BPB_BytsPerSec, 2, 11);
+	pread(f, &BPB_SecPerClus, 1, 13);
+	pread(f, &BPB_RsvdSecCnt, 2, 14);
+	pread(f, &BPB_NumFATs, 1, 16);
+	pread(f, &BPB_TotSec32, 4, 32);
+	pread(f, &BPB_FATSz32, 4, 36);
+	pread(f, &BPB_RootClus, 4, 44);
+	
+		
 	//Variables for Intake
     char* token = NULL;
     char* temp = NULL;
@@ -106,22 +116,22 @@ int main() {
             clearInstruction(&instr);
 			break;
 		}
+		
+		if(strcmp(instr.tokens[0], "info") == 0){
+            printf("%s%hu\n", "Bytes per sector: ", BPB_BytsPerSec);
+			printf("%s%u\n", "Sectors per cluster: ", BPB_SecPerClus);	
+			printf("%s%hu\n", "Reserved sector count: ", BPB_RsvdSecCnt);	
+			printf("%s%u\n", "Number of FATs: ", BPB_NumFATs);	
+			printf("%s%u\n", "Total sectors: ", BPB_TotSec32);	
+			printf("%s%u\n", "FAT size: ", BPB_FATSz32);
+			printf("%s%u\n", "Root Cluster: ", BPB_RootClus);
+			unsigned int BPB_TotSec32;
+			
+		}
+		
 
         if(strcmp(instr.tokens[0], "size") == 0) {
-			/*
-            FILE *sizeFile;
-            if (sizeFile = (fopen(instr.tokens[1], "r"))) {
-                fseek(sizeFile, 0L, SEEK_END);
-                int size = ftell(sizeFile);
-                printf("%d\n", size);   //Need to know how size is displayed
-                fseek(sizeFile, 0L, SEEK_SET);
-
-                fclose(sizeFile);
-            }
-			else{
-				printf("%s\n", "Error: File does not exist");
-			}
-			*/
+			
         }
 
         clearInstruction(&instr);

@@ -4,13 +4,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+
 typedef struct
 {
     char** tokens;
     int numTokens;
 } instruction;
 
-struct DirEntry{
+typedef struct{
 	unsigned char DIR_name[11];
 	unsigned char DIR_Attributes;
 	unsigned char DIR_NTRes;
@@ -24,26 +25,45 @@ struct DirEntry{
 	unsigned short DIR_FstClusLO;
 	unsigned long DIR_FileSize;
 	
-} __attribute__((packed));
+} __attribute__((packed)) DirEntry;
+
+typedef struct {
+	unsigned char name[100];
+	unsigned int curr_clust_num;
+	char curr_clust_path[50];
+	char curr_path[50][100];
+	int curr;
+}__attribute__((packed)) ENVIR;
+
+// Global Variables
+ENVIR environment;
+FILE * image;
+
+unsigned short BPB_BytsPerSec;	
+unsigned char BPB_SecPerClus;	
+unsigned short BPB_RsvdSecCnt;	
+unsigned char BPB_NumFATs;	
+unsigned int BPB_TotSec32;
+unsigned int BPB_FATSz32;	
+unsigned int BPB_RootClus;	
+
+int FirstDataSector;
+
+
+//Functions 
 
 void addToken(instruction* instr_ptr, char* tok);
 void printTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
+void listDirectory(unsigned int current_clust_num);
+int firstSectorOfCluster(unsigned int clusterNum);
+void ls(int current_clust_num, const char *pathDir);
 
 int main() {
 	
 	
-	unsigned short BPB_BytsPerSec;	
-	unsigned char BPB_SecPerClus;	
-	unsigned short BPB_RsvdSecCnt;	
-	unsigned char BPB_NumFATs;	
-	unsigned int BPB_TotSec32;
-	unsigned int BPB_FATSz32;	
-	unsigned int BPB_RootClus;	
-		
 	int f = open("fat32.img", O_RDWR);
-	
 	pread(f, &BPB_BytsPerSec, 2, 11);
 	pread(f, &BPB_SecPerClus, 1, 13);
 	pread(f, &BPB_RsvdSecCnt, 2, 14);
@@ -51,92 +71,146 @@ int main() {
 	pread(f, &BPB_TotSec32, 4, 32);
 	pread(f, &BPB_FATSz32, 4, 36);
 	pread(f, &BPB_RootClus, 4, 44);
-	
+	close(f);
+
+
+
+
+
+	// to include the cluster_num and clust_name to the curr path
+	int curr_cluster = 0;
+	environment.curr = 0;
+	char *pathName = "/";
+	environment.curr_clust_num = BPB_RootClus;
+	strcpy((char *)environment.name, pathName);
+	strcpy(environment.curr_path[environment.curr], pathName);
+
+	environment.curr_clust_path[environment.curr] = BPB_RootClus;
+	++environment.curr;
+
+	//calculate the FirstDataSector
+	FirstDataSector = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz32);
 		
-	//Variables for Intake
-    char* token = NULL;
-    char* temp = NULL;
+		//Variables for Intake
+	char* token = NULL;
+	char* temp = NULL;
 
-    instruction instr;
-    instr.tokens = NULL;
-    instr.numTokens = 0;
+	instruction instr;
+	instr.tokens = NULL;
+	instr.numTokens = 0;
+	
+	
 
-    while (1) {
-        printf("Please enter an instruction: ");
+	while (1) {
+	// for the current environment info
+	char *user = getenv("USER");
+	char *machine = getenv("MACHINE");
+	char *pwd = getenv("PWD");
+		
+	printf("%s@%s:", user, machine);
 
-        // loop reads character sequences separated by whitespace
-        do {
-            //scans for next token and allocates token var to size of scanned token
-            scanf("%ms", &token);
-            temp = (char*)malloc((strlen(token) + 1) * sizeof(char));
+		int j = 0;
+	while(j < environment.curr)
+	{
+	printf("%s/", j == 0 ? "" : environment.curr_path[j]);
+	j++;
+	}
+	printf("> ");
 
-            int i;
-            int start = 0;
 
-            for (i = 0; i < strlen(token); i++) {
-                //pull out special characters and make them into a separate token in the instruction
-                if (token[i] == '|' || token[i] == '>' || token[i] == '<' || token[i] == '&') {
-                    if (i-start > 0) {
-                        memcpy(temp, token + start, i - start);
-                        temp[i-start] = '\0';
-                        addToken(&instr, temp);
-                    }
+		// loop reads character sequences separated by whitespace
+		do {
+			//scans for next token and allocates token var to size of scanned token
+			scanf("%ms", &token);
+			temp = (char*)malloc((strlen(token) + 1) * sizeof(char));
 
-                    char specialChar[2];
-                    specialChar[0] = token[i];
-                    specialChar[1] = '\0';
+			int i;
+			int start = 0;
 
-                    addToken(&instr,specialChar);
+			for (i = 0; i < strlen(token); i++) {
+				//pull out special characters and make them into a separate token in the instruction
+				if (token[i] == '|' || token[i] == '>' || token[i] == '<' || token[i] == '&') {
+					if (i-start > 0) {
+						memcpy(temp, token + start, i - start);
+						temp[i-start] = '\0';
+						addToken(&instr, temp);
+					}
 
-                    start = i + 1;
-                }
-            }
+					char specialChar[2];
+					specialChar[0] = token[i];
+					specialChar[1] = '\0';
 
-            if (start < strlen(token)) {
-                memcpy(temp, token + start, strlen(token) - start);
-                temp[i-start] = '\0';
-                addToken(&instr, temp);
-            }
+					addToken(&instr,specialChar);
 
-            //free and reset variables
-            free(token);
-            free(temp);
+					start = i + 1;
+				}
+			}
 
-            token = NULL;
-            temp = NULL;
-        } while ('\n' != getchar());    //until end of line is reached
+			if (start < strlen(token)) {
+				memcpy(temp, token + start, strlen(token) - start);
+				temp[i-start] = '\0';
+				addToken(&instr, temp);
+			}
 
-        addNull(&instr);
-        
-        //Add functions here
-        
+			//free and reset variables
+			free(token);
+			free(temp);
+
+			token = NULL;
+			temp = NULL;
+		} while ('\n' != getchar());    //until end of line is reached
+
+		addNull(&instr);
+		
+		//Add functions here
+		
 		
 		
 		if(strcmp(instr.tokens[0], "exit") == 0){
-            clearInstruction(&instr);
+			clearInstruction(&instr);
 			break;
 		}
-		
-		if(strcmp(instr.tokens[0], "info") == 0){
-            printf("%s%hu\n", "Bytes per sector: ", BPB_BytsPerSec);
+
+		if(strcmp(instr.tokens[0], "info") == 0) {
+			printf("%s%hu\n", "Bytes per sector: ", BPB_BytsPerSec);
 			printf("%s%u\n", "Sectors per cluster: ", BPB_SecPerClus);	
 			printf("%s%hu\n", "Reserved sector count: ", BPB_RsvdSecCnt);	
 			printf("%s%u\n", "Number of FATs: ", BPB_NumFATs);	
 			printf("%s%u\n", "Total sectors: ", BPB_TotSec32);	
 			printf("%s%u\n", "FAT size: ", BPB_FATSz32);
 			printf("%s%u\n", "Root Cluster: ", BPB_RootClus);
-			unsigned int BPB_TotSec32;
-			
 		}
-		
 
-        if(strcmp(instr.tokens[0], "size") == 0) {
-			
-        }
-
-        clearInstruction(&instr);
-    }
-
+		clearInstruction(&instr);
+	}
+	 if(strcmp(instr.tokens[0], "ls") == 0)
+	{
+	 if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
+	{	
+		 
+		if(strcmp(instr.tokens[1], "..") == 0)
+		{
+			if(environment.curr -2 != 0)
+			{
+			 listDirectory(BPB_RootClus);
+			}
+	else		
+		listDirectory(environment.curr_clust_path[environment.curr-2]);
+			//listDirectory(BPB_RootClus);
+					
+		}
+	else 	
+		{// I would need the cd function for this 
+		//lisDir(environment.curr_clus, instr.tokens[1]);
+		}
+	}
+		else 
+		{
+			listDirectory(environment.curr_clust_num);
+		}	
+	 clearInstruction(&instr);
+	}
+	
 
 
 
@@ -190,4 +264,54 @@ void clearInstruction(instruction* instr_ptr)
 
     instr_ptr->tokens = NULL;
     instr_ptr->numTokens = 0;
+}
+
+// Obtain the first sector of clusters 
+int firstSectorOfCluster(unsigned int clusterNum)
+{
+int firstSectorOfClust= (((clusterNum -2) * BPB_SecPerClus) + FirstDataSector) * BPB_BytsPerSec;
+	return firstSectorOfClust;
+
+}
+
+void listDirectory(unsigned int current_clust_num)
+{
+
+	int clusterNumber;
+	DirEntry tempDir;
+	unsigned int start = 0;
+	while(1)
+	{
+		start = 0;
+		while(BPB_BytsPerSec > start*sizeof(tempDir))
+		{
+			int offset = firstSectorOfCluster(current_clust_num) + start *sizeof(tempDir);
+
+
+				// the file pointer will be moved to the starting position of the root dir.
+				fseek(image, offset, SEEK_SET);
+
+				//the root dir. should be read to a new buff.
+				fread(&tempDir, 1,BPB_BytsPerSec, image);
+
+				// print the directories and file names
+				if(strcmp((char *)tempDir.DIR_name,"") !=0)
+				{
+					printf("%s\n", tempDir.DIR_name);
+					start++;
+		
+				}
+		}	
+	}
+}
+
+	void ls(int current_clust_num, const char *pathDir)
+	{
+	// for . and ..
+	if(strcmp(pathDir, ".") == 0)
+	{
+		listDirectory(current_clust_num);
+	}
+
+
 }

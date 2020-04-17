@@ -28,17 +28,17 @@ typedef struct{
 } __attribute__((packed)) DirEntry;
 
 typedef struct {
-	unsigned char name[100];
-	unsigned int curr_clust_num;
-	char curr_clust_path[50];
-	char curr_path[50][100];
-	int curr;
-}__attribute__((packed)) ENVIR;
+	unsigned char name[150]; //current name of the directory 
+	unsigned int curr_clust_num; //The Current Cluster Number, the curr clust number for rootdir should be 2 
+	int curr_clust_path[100]; //Curent Cluster Path 
+	char curr_path[100][150]; // Current Path 
+	int curr;	//To keep track of the paths/directories
+} __attribute__((packed)) ENVIR;
 
 // Global Variables
 ENVIR environment;
 FILE * image;
-
+int f;
 unsigned short BPB_BytsPerSec;	
 unsigned char BPB_SecPerClus;	
 unsigned short BPB_RsvdSecCnt;	
@@ -57,13 +57,15 @@ void printTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
 void listDirectory(unsigned int current_clust_num);
-int firstSectorOfCluster(unsigned int clusterNum);
-void ls(int current_clust_num, const char *pathDir);
+int firstSectorOfCluster(unsigned int N);
+void ls(int current_clust_num, char *pathDir);
+void pathAppend(int curr_clusterNum,char *pathName);
+void printEnv(void);
 
 int main() {
 	
 	
-	int f = open("fat32.img", O_RDWR);
+	f = open("fat32.img", O_RDWR);
 	pread(f, &BPB_BytsPerSec, 2, 11);
 	pread(f, &BPB_SecPerClus, 1, 13);
 	pread(f, &BPB_RsvdSecCnt, 2, 14);
@@ -71,26 +73,19 @@ int main() {
 	pread(f, &BPB_TotSec32, 4, 32);
 	pread(f, &BPB_FATSz32, 4, 36);
 	pread(f, &BPB_RootClus, 4, 44);
-	close(f);
+	
 
 
 
-
-
-	// to include the cluster_num and clust_name to the curr path
-	int curr_cluster = 0;
-	environment.curr = 0;
-	char *pathName = "/";
-	environment.curr_clust_num = BPB_RootClus;
-	strcpy((char *)environment.name, pathName);
-	strcpy(environment.curr_path[environment.curr], pathName);
-
-	environment.curr_clust_path[environment.curr] = BPB_RootClus;
-	++environment.curr;
-
+	
 	//calculate the FirstDataSector
 	FirstDataSector = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz32);
-		
+	
+	 environment.curr = 0;  // initialize the tracker
+		char pathName[1];
+		strcpy(pathName, "/Rootdirectory");// for the rootcluster
+		//sets the environment root info
+        pathAppend(BPB_RootClus,pathName);	
 		//Variables for Intake
 	char* token = NULL;
 	char* temp = NULL;
@@ -98,24 +93,32 @@ int main() {
 	instruction instr;
 	instr.tokens = NULL;
 	instr.numTokens = 0;
-	
-	
+		
+		
 
 	while (1) {
-	// for the current environment info
-	char *user = getenv("USER");
-	char *machine = getenv("MACHINE");
-	char *pwd = getenv("PWD");
-		
-	printf("%s@%s:", user, machine);
+		// for the current environment info
+		char *user = getenv("USER");
+		char *machine = getenv("MACHINE");
+		char *pwd = getenv("PWD");
+			
+		printf("%s@%s:%s", user, machine,pwd);
 
-		int j = 0;
-	while(j < environment.curr)
-	{
-	printf("%s/", j == 0 ? "" : environment.curr_path[j]);
-	j++;
-	}
-	printf("> ");
+		int j;
+		for(j = 0; j < environment.curr; j++)
+		{ //if it is still the root cluster directory, print nothing else print the current path
+				if(j == 0)
+				{
+					printf("%s/", "");
+
+
+				} 
+				//else print the current path || directoryname
+				else
+				printf("%s/",environment.curr_path[j]);
+			
+		}
+		printf("> ");
 
 
 		// loop reads character sequences separated by whitespace
@@ -167,7 +170,13 @@ int main() {
 		
 		
 		if(strcmp(instr.tokens[0], "exit") == 0){
-			clearInstruction(&instr);
+			if(close(f) != 0){
+				printf("There was a problem close fat32.img\n");
+			}
+			else{
+				clearInstruction(&instr);
+				printf("Successfully Exited\n");
+			}
 			break;
 		}
 
@@ -180,36 +189,38 @@ int main() {
 			printf("%s%u\n", "FAT size: ", BPB_FATSz32);
 			printf("%s%u\n", "Root Cluster: ", BPB_RootClus);
 		}
-
-		clearInstruction(&instr);
-	}
-	 if(strcmp(instr.tokens[0], "ls") == 0)
-	{
-	 if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
-	{	
-		 
-		if(strcmp(instr.tokens[1], "..") == 0)
+		
+		if(strcmp(instr.tokens[0], "ls") == 0)
 		{
-			if(environment.curr -2 != 0)
-			{
-			 listDirectory(BPB_RootClus);
+		if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
+			{	
+			 
+				if(strcmp(instr.tokens[1], "..") == 0)
+				{
+					if(environment.curr -2 != 0)
+					{
+					 listDirectory(BPB_RootClus);
+					}
+					else		
+					listDirectory(environment.curr_clust_path[environment.curr-2]);
+					//listDirectory(BPB_RootClus);
+							
+				}
+				else 	
+				{// I would need the cd function for this 
+					ls(environment.curr_clust_num, instr.tokens[1]);
+				}
 			}
-	else		
-		listDirectory(environment.curr_clust_path[environment.curr-2]);
-			//listDirectory(BPB_RootClus);
-					
-		}
-	else 	
-		{// I would need the cd function for this 
-		//lisDir(environment.curr_clus, instr.tokens[1]);
-		}
-	}
 		else 
 		{
 			listDirectory(environment.curr_clust_num);
 		}	
-	 clearInstruction(&instr);
+		
+		}
+
+		clearInstruction(&instr);
 	}
+	
 	
 
 
@@ -266,34 +277,39 @@ void clearInstruction(instruction* instr_ptr)
     instr_ptr->numTokens = 0;
 }
 
-// Obtain the first sector of clusters 
-int firstSectorOfCluster(unsigned int clusterNum)
+// Obtain the first sector of clusters a.k.a the starting position of the root dir. 
+int firstSectorOfCluster(unsigned int N)
 {
-int firstSectorOfClust= (((clusterNum -2) * BPB_SecPerClus) + FirstDataSector) * BPB_BytsPerSec;
-	return firstSectorOfClust;
+	int firstSectClust= ((N -2) * BPB_SecPerClus) + FirstDataSector;
+	int offSet = firstSectClust * BPB_BytsPerSec;
+	return offSet;
 
 }
 
 void listDirectory(unsigned int current_clust_num)
 {
-
-	int clusterNumber;
+	int j=0;
+	int clustNum;
 	DirEntry tempDir;
 	unsigned int start = 0;
+	// get the 
 	while(1)
 	{
-		start = 0;
-		while(BPB_BytsPerSec > start*sizeof(tempDir))
+		start = 0; // reset
+		j = start*sizeof(tempDir);
+		
+		while(j < BPB_BytsPerSec)
 		{
-			int offset = firstSectorOfCluster(current_clust_num) + start *sizeof(tempDir);
+			int offset = firstSectorOfCluster(current_clust_num) + j;
 
-
-				// the file pointer will be moved to the starting position of the root dir.
-				fseek(image, offset, SEEK_SET);
+			
+				// sets the position of fd  to the starting position of the root dir.
+				lseek(f, offset, SEEK_SET);
 
 				//the root dir. should be read to a new buff.
-				fread(&tempDir, 1,BPB_BytsPerSec, image);
-
+	         		//  ssize_t read(int fd, void *buf, size_t count);	
+				read(f,&tempDir,sizeof(DirEntry));
+			
 				// print the directories and file names
 				if(strcmp((char *)tempDir.DIR_name,"") !=0)
 				{
@@ -302,16 +318,42 @@ void listDirectory(unsigned int current_clust_num)
 		
 				}
 		}	
+			//Offset (in bytes) for cluster N:Offset = FirstFatSector* BPB_BytsPerSec+ N * 4
+			/*lseek(f, (BPB_RsvdSecCnt * BPB_BytsPerSec) + (current_clust_num *4), SEEK_SET);
+			read(f,&clustNum, sizeof(clustNum));*/
+			if(clustNum == 0x0FFFFFFF || clustNum ==  0x0FFFFFF8)
+			{
+				break;
+			}  
+			else 
+			{	
+				current_clust_num = clustNum;
+			
+			}
 	}
 }
 
-	void ls(int current_clust_num, const char *pathDir)
+	void ls(int current_clust_num,  char *pathDir)
 	{
-	// for . and ..
-	if(strcmp(pathDir, ".") == 0)
+	// for . and ..	
+	int clust_int = 0;
+	//	clust_int  = cd(current_clust_num, pathDir);
+	if(clust_int != current_clust_num)
 	{
-		listDirectory(current_clust_num);
+	listDirectory(clust_int);
 	}
 
 
 }
+
+
+void pathAppend(int curr_clusterNum,char * pathName)
+{
+	 strcpy((char *)environment.name, pathName);
+	strcpy(environment.curr_path[environment.curr], pathName); // add the name to the current path name
+ 	environment.curr_clust_num = curr_clusterNum;  //set the current cluster number to the currclustnum in envir.
+        environment.curr_clust_path[environment.curr] = curr_clusterNum;
+        environment.curr++; // update
+
+}
+

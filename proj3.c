@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
+//#include <bits/stdc++.h>
 
 
 typedef struct
@@ -59,6 +61,9 @@ void addNull(instruction* instr_ptr);
 void listDirectory(unsigned int current_clust_num);
 int firstSectorOfCluster(unsigned int clusterNum);
 void ls(int current_clust_num, const char *pathDir);
+int size(char* arg, int image);
+void create(char* arg, int image);
+int nextEmptyClus(int image);
 
 int main() {
 	
@@ -71,7 +76,7 @@ int main() {
 	pread(f, &BPB_TotSec32, 4, 32);
 	pread(f, &BPB_FATSz32, 4, 36);
 	pread(f, &BPB_RootClus, 4, 44);
-	close(f);
+	
 
 	image = fopen("fat32.img", "r+b");
 
@@ -90,7 +95,8 @@ int main() {
 
 	//calculate the FirstDataSector
 	FirstDataSector = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz32);
-		
+	
+	
 		//Variables for Intake
 	char* token = NULL;
 	char* temp = NULL;
@@ -187,6 +193,13 @@ int main() {
 			printf("%s%u\n", "Root Cluster: ", BPB_RootClus);
 		}
 		
+		if(strcmp(instr.tokens[0], "size") == 0) {
+			int s;
+			s = size(instr.tokens[1], f);
+			if(s >= 0)
+				printf("%u\n", s);  
+		}
+		
 		if(strcmp(instr.tokens[0], "ls") == 0)
 		{
 		if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
@@ -214,9 +227,15 @@ int main() {
 		}	
 		
 		}
+		
+		if(strcmp(instr.tokens[0], "create") == 0){
+			create(instr.tokens[1], f);
+		}
 
 		clearInstruction(&instr);
 	}
+	
+	
 	
 	
 
@@ -277,7 +296,7 @@ void clearInstruction(instruction* instr_ptr)
 // Obtain the first sector of clusters 
 int firstSectorOfCluster(unsigned int clusterNum)
 {
-int firstSectorOfClust= (((clusterNum -2) * BPB_SecPerClus) + FirstDataSector) * BPB_BytsPerSec;
+	int firstSectorOfClust= (((clusterNum -2) * BPB_SecPerClus) + FirstDataSector) * BPB_BytsPerSec;
 	return firstSectorOfClust;
 
 }
@@ -313,13 +332,122 @@ void listDirectory(unsigned int current_clust_num)
 	}
 }
 
-	void ls(int current_clust_num, const char *pathDir)
-	{
+int size(char* arg, int image){
+	
+	DirEntry tempDir;
+	unsigned int x = environment.curr_clust_num;	//First cluster we check
+	unsigned int byteOffSet;
+	unsigned char firstBit;
+	
+	
+	char* space = " ";
+	int i;
+	for(i = strlen(arg); i < 11; i++){
+		strcat(arg, space);
+	}
+	
+	
+	while(x < 0x0FFFFFF8){
+		
+		byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( x - 2) * BPB_SecPerClus);
+		
+		int i;
+		
+		do{
+
+			pread(image, &tempDir, sizeof(DirEntry), byteOffSet);	//intake entire dir entry
+			if(tempDir.DIR_Attributes != 15){
+				int j;
+				for(j = 0; j < 11; j++){
+					printf("%c", tempDir.DIR_name[j]);
+				}
+				printf("\n");
+				
+				//Print size if name matches of directory matches arg
+				if(strncmp(tempDir.DIR_name, arg, 11) == 0)
+					return tempDir.DIR_FileSize;
+		}
+			byteOffSet += 32;
+		}while(tempDir.DIR_name[0] != 0);
+		
+		
+		pread(image, &x, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + x * 4);	//Should read the value at the current cluster number and make it the new curr cluster number
+		
+	}
+	
+	printf("File does not exist\n");
+	return -1;
+	
+}
+
+void create(char* arg, int image){
+	
+	
+	DirEntry temp;
+	unsigned int eofValue = 0x0FFFFFF8;
+	unsigned int tempClus;
+	unsigned short lo;
+	unsigned short hi;
+	
+	/*
+	do{
+		tempClus++;
+		
+		pread(image, &clusValue, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + tempClus * 4);
+		printf("%s%u%s%u\n", "Cluster Number: ", tempClus, "     Value in cluster", clusValue);
+	}while(clusValue != 0);
+	*/
+	tempClus = nextEmptyClus(image);
+	
+	printf("%s%i\n", "This is getting printed: ", tempClus);
+	pwrite(image, &eofValue, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + tempClus * 4);
+	
+	//temp.DIR_name = arg;
+	//temp.DIR_FstClusHI;
+	//temp.DIR_FstClusLO;
+	temp.DIR_FileSize = 0;
+	//printf("%u\n", temp.DIR_FstClusLO);
+	//printf("%u\n", temp.DIR_FstClusHI);
+	
+	//Putting the actual directory entry into the directory (What if the directory is full)
+	unsigned char firstBit;
+	unsigned int byteOffSet;
+	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( tempClus - 2) * BPB_SecPerClus);
+	
+	//Read throught the directory until an unnocupied space is found
+	while(1){
+		pread(image, &firstBit, 1, byteOffSet);
+		if(firstBit == 0){
+			pwrite(image, &temp, sizeof(temp), byteOffSet);
+		}
+		byteOffSet += 32;
+	};
+}
+
+
+
+int nextEmptyClus(int image){
+	
+	unsigned int tempClus = BPB_RootClus;
+	unsigned int clusValue;
+	
+	do{
+		tempClus++;
+		
+		
+		pread(image, &clusValue, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + tempClus * 4);
+		printf("%s%u%s%u\n", "Cluster Number: ", tempClus, "     Value in cluster", clusValue);
+	}while(clusValue != 0);
+	
+	return tempClus;
+	
+}
+
+void ls(int current_clust_num, const char *pathDir)
+{
 	// for . and ..
 	if(strcmp(pathDir, ".") == 0)
 	{
 		listDirectory(current_clust_num);
 	}
-
-
 }

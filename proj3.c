@@ -46,6 +46,7 @@ struct FileFAT *next;
 ENVIR environment;
 int f;
 DirEntry Dir;
+const int CLUSTER_END =268435448;
 unsigned short BPB_BytsPerSec;	
 unsigned char BPB_SecPerClus;	
 unsigned short BPB_RsvdSecCnt;	
@@ -251,9 +252,8 @@ int main() {
 			{
 			if(strcmp(instr.tokens[1], ".") == 0)
 			{	
-
+			
 			//Do Nothing
-	
 
 			}
 			else if(strcmp(instr.tokens[1], "..") == 0)
@@ -276,7 +276,7 @@ int main() {
 			}
 
 			}
-		clearInstruction(&instr);
+		//clearInstruction(&instr);
 		}
 			if(strcmp(instr.tokens[0], "size") == 0) {
 			int s;
@@ -424,10 +424,9 @@ listDirectory(clust_int);
 
 int cd(char *name, int directoryClust)
 {
-int x = environment.curr_clust_num;
-int clust_num;
+int clust_num = environment.curr_clust_num;
 DirEntry temp;
-int clust =  directoryClust;
+//int clust =  directoryClust;
 
 char *space = " ";
 int i;
@@ -435,7 +434,7 @@ for(i = strlen(name); i < 11; i++)
 {
 		strcat(name, space);
 }
-while(x < 0x0FFFFFF8)
+while(clust_num < 0x0FFFFFF8)
 {
 int ofSet = firstSectorOfCluster(directoryClust);
 int i;
@@ -461,23 +460,17 @@ if(temp.DIR_Attributes & 0x10 && strncmp(temp.DIR_name,name,11) == 0)
 
 	lseek(f, 0x4000 + (directoryClust *4), SEEK_SET);
         read(f,&clust_num, sizeof(clust_num));
-
-	 if(clust_num == 0x0FFFFFFFF || (clust_num >= 0x0FFFFFFF8 && clust_num <=  0x0FFFFFFFE))
+	directoryClust = clust_num;
+	 if(clust_num >= 0x0FFFFFF8 )
 			
                         {
                              printf("Error: No such directory \n");   
 				  break;
                         }
-                        else
-                        {
-
-                                directoryClust = clust_num;
-
-                        }	
-	
+                        
 }
 
-return clust;
+return directoryClust;;
 
 }
 

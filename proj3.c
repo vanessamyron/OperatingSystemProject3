@@ -63,7 +63,6 @@ int size(char* arg, int image);
 void create(char* arg, int image);
 void mkdir(char* arg, int image);
 int nextEmptyClus(int image);
-int cd(char *name, int directoryClust);
 void ls(int image, unsigned int clusNum);
 
 int main() {

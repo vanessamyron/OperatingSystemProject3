@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
+//#include <bits/stdc++.h>
 
 
 typedef struct
@@ -28,25 +30,17 @@ typedef struct{
 } __attribute__((packed)) DirEntry;
 
 typedef struct {
-	unsigned char name[150]; //current name of the directory 
-	unsigned int curr_clust_num; //The Current Cluster Number, the curr clust number for rootdir should be 2 
-	int curr_clust_path[100]; //Curent Cluster Path 
-	char curr_path[100][150]; // Current Path 
-	int curr;	//To keep track of the paths/directories
-} __attribute__((packed)) ENVIR;
-
-struct FileFAT{
-char fileName[50];
-char fileMode[10];
-struct FileFAT *next;
-};
-
+	unsigned char name[100];
+	unsigned int curr_clust_num;
+	char curr_clust_path[50];
+	char curr_path[50][100];
+	int curr;
+}__attribute__((packed)) ENVIR;
 
 // Global Variables
 ENVIR environment;
 int f;
-DirEntry Dir;
-const int CLUSTER_END =268435448;
+
 unsigned short BPB_BytsPerSec;	
 unsigned char BPB_SecPerClus;	
 unsigned short BPB_RsvdSecCnt;	
@@ -64,20 +58,18 @@ void addToken(instruction* instr_ptr, char* tok);
 void printTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
-void listDirectory(int current_clust_num);
-int firstSectorOfCluster(int N);
-void ls(int current_clust_num, char *pathDir);
-void pathAppend(int curr_clusterNum,char *pathName);
-void deleteAppend();
+int firstSectorOfCluster(unsigned int clusterNum);
+int size(char* arg, int image);
+void create(char* arg, int image);
+void mkdir(char* arg, int image);
+int nextEmptyClus(int image);
 int cd(char *name, int directoryClust);
-void openFile(char * fileName, char * fileMode);
-//int size(char* arg, int image);
-//void create(char* arg, int image);
-//int nextEmptyClus(int image);
+void ls(int image, unsigned int clusNum);
+
 int main() {
 	
 	
-	f = open("fat32.img", O_RDWR);
+	int f = open("fat32.img", O_RDWR);
 	pread(f, &BPB_BytsPerSec, 2, 11);
 	pread(f, &BPB_SecPerClus, 1, 13);
 	pread(f, &BPB_RsvdSecCnt, 2, 14);
@@ -87,17 +79,25 @@ int main() {
 	pread(f, &BPB_RootClus, 4, 44);
 	
 
-
-
 	
+
+
+
+	// to include the cluster_num and clust_name to the curr path
+	int curr_cluster = 0;
+	environment.curr = 0;
+	char *pathName = "/";
+	environment.curr_clust_num = BPB_RootClus;
+	strcpy((char *)environment.name, pathName);
+	strcpy(environment.curr_path[environment.curr], pathName);
+
+	environment.curr_clust_path[environment.curr] = BPB_RootClus;
+	++environment.curr;
+
 	//calculate the FirstDataSector
 	FirstDataSector = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz32);
 	
-	 environment.curr = 0;  // initialize the tracker
-		char pathName[1];
-		strcpy(pathName, "/Rootdirectory");// for the rootcluster
-		//sets the environment root info
-        pathAppend(BPB_RootClus,pathName);	
+	
 		//Variables for Intake
 	char* token = NULL;
 	char* temp = NULL;
@@ -105,8 +105,8 @@ int main() {
 	instruction instr;
 	instr.tokens = NULL;
 	instr.numTokens = 0;
-		
-		
+	
+	
 
 	while (1) {
 		// for the current environment info
@@ -114,22 +114,13 @@ int main() {
 		char *machine = getenv("MACHINE");
 		char *pwd = getenv("PWD");
 			
-		printf("%s@%s:%s", user, machine,pwd);
+		printf("%s@%s:", user, machine);
 
-		int j;
-		for(j = 0; j < environment.curr; j++)
-		{ //if it is still the root cluster directory, print nothing else print the current path
-				if(j == 0)
-				{
-					printf("%s/", "");
-
-
-				} 
-				//else print the current path || directoryname
-				else if(environment.curr_path[j] != " ")
-					{
-				        printf("%s/",environment.curr_path[j]);
-					}
+			int j = 0;
+		while(j < environment.curr)
+		{
+			printf("%s/", j == 0 ? "" : environment.curr_path[j]);
+			j++;
 		}
 		printf("> ");
 
@@ -157,8 +148,6 @@ int main() {
 					specialChar[1] = '\0';
 
 					addToken(&instr,specialChar);
-
-
 
 					start = i + 1;
 				}
@@ -205,87 +194,26 @@ int main() {
 			printf("%s%u\n", "Root Cluster: ", BPB_RootClus);
 		}
 		
-
-		if(strcmp(instr.tokens[0], "ls") == 0)
-		{
-		if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
-			{	
-			 
-				if(strcmp(instr.tokens[1], "..") == 0)
-				{
-					if(environment.curr -2 == 0)
-					{
-					     listDirectory(environment.curr_clust_path[environment.curr-2]);
-					// listDirectory(instr.tokens[1],BPB_RootClus);
-					}
-					else		
-					//listDirectory(environment.curr_clust_path[environment.curr-2]);
-					listDirectory(BPB_RootClus);
-							
-				}
-				else 	
-				{// I would need the cd function for this 
-					ls(environment.curr_clust_num, instr.tokens[1]);
-				}
-			} 
-		else
-                {
-                 listDirectory( environment.curr_clust_num);
-                }
-		
-			
-		 
-		}
-
-		if(strcmp(instr.tokens[0], "cd") == 0)
-
-		{
-			if(instr.tokens[1] == NULL)
-
-			{
-				printf("Error \n");
-			//clearInstruction(&instr);			
-
-			}
-
-			else
-			{
-			if(strcmp(instr.tokens[1], ".") == 0)
-			{	
-			
-			//Do Nothing
-
-			}
-			else if(strcmp(instr.tokens[1], "..") == 0)
-			{
-			deleteAppend();	
-
-			}
-			else
-
-			{
-			
-				int nwClust = cd( instr.tokens[1], environment.curr_clust_num);
-				if(nwClust != environment.curr_clust_num)
-				{
-					printf("%d\n", nwClust);
-					pathAppend(cd(instr.tokens[1], environment.curr_clust_num), instr.tokens[1]);
-
-				}
-				
-			}
-
-			}
-		//clearInstruction(&instr);
-		}
-			if(strcmp(instr.tokens[0], "size") == 0) {
+		if(strcmp(instr.tokens[0], "size") == 0) {
 			int s;
 			s = size(instr.tokens[1], f);
 			if(s >= 0)
 				printf("%u\n", s);  
 		}
-					
+		
+		
+		if(strcmp(instr.tokens[0], "create") == 0){
+			create(instr.tokens[1], f);
+		}
+
+		if(strcmp(instr.tokens[0], "mkdir") == 0){
+			mkdir(instr.tokens[1], f);
+		}
+		
+		clearInstruction(&instr);
 	}
+	
+	
 	
 	
 
@@ -343,180 +271,11 @@ void clearInstruction(instruction* instr_ptr)
     instr_ptr->numTokens = 0;
 }
 
-// Obtain the first sector of clusters a.k.a the starting position of the root dir. 
-int firstSectorOfCluster( int N)
+// Obtain the first sector of clusters 
+int firstSectorOfCluster(unsigned int clusterNum)
 {
-	int firstSectClust= ((N -2) * BPB_SecPerClus) + FirstDataSector;
-	int offSet = firstSectClust * BPB_BytsPerSec;
-//	printf("Byte of current cluster: %x\n", offSet);	
-		return offSet;
-}
-
-void listDirectory(int current_clust_num)
-{
-	int clustNum = environment.curr_clust_num;
-	DirEntry tempDir;
-	 int start = 0;
-         
-
-	while(clustNum < 0x0FFFFFF8)
-	{
-		
-		
-		 int offset = firstSectorOfCluster(current_clust_num);
-		 int i;
-			do {
-			
-				// sets the position of fd  to the starting position of the root dir.
-				lseek(f, offset, SEEK_SET);
-
-				//the root dir. should be read to a new buff.
-	         		//  ssize_t read(int fd, void *buf, size_t count);
-	
-				pread(f,&tempDir,sizeof(DirEntry), offset);
-			
-				// print the directories and file names	
-					if(tempDir.DIR_Attributes != 15)
-				{	printf("%s\n", tempDir.DIR_name);}
-						
-		
-				
-			/*	if((DIR_Attr & ATTR_LONG_FILE) == ATTR_LONG_FILE)
-				{	
-					continue;
-
-				}	*/
-						
-		offset +=32;			
-		} while(tempDir.DIR_name[0] !=0);
-	
-			//(BPB_RsvdSecCnt * BPB_BytsPerSec)
-			//Offset (in bytes) for cluster N:Offset = FirstFatSector* BPB_BytsPerSec+ N * 4
-			lseek(f,BPB_RsvdSecCnt * BPB_BytsPerSec + (current_clust_num *4), SEEK_SET);
-			read(f,&clustNum, sizeof(int));
-		/*	if(clustNum < 0x0FFFFFF8)
-			{
-				break;
-			}  
-			else
-			{
-				printf("What");	
-				current_clust_num = clustNum;
-			
-			}
-		*/
-	}
-}
-
-void ls(int current_clust_num,char *pathDir)
-{
-	// for . and ..	
-int clust_int  = cd(pathDir, current_clust_num);
-if(clust_int != current_clust_num)
-{
-listDirectory(clust_int);
-}
-
-}
-
-	
-
-
-int cd(char *name, int directoryClust)
-{
-int clust_num = environment.curr_clust_num;
-DirEntry temp;
-//int clust =  directoryClust;
-
-char *space = " ";
-int i;
-for(i = strlen(name); i < 11; i++)
-{
-		strcat(name, space);
-}
-while(clust_num < 0x0FFFFFF8)
-{
-int ofSet = firstSectorOfCluster(directoryClust);
-int i;
-do{
-	lseek(f, ofSet, SEEK_SET);
-	read(f,&temp,sizeof(DirEntry));
-	 
-if(temp.DIR_Attributes & 0x10 && strncmp(temp.DIR_name,name,11) == 0)
-		{
- 		
-		return  0x100 * temp.DIR_FstClusHI + temp.DIR_FstClusLO;
-		
-		} 	
-			
-	ofSet +=32;		
-}while(temp.DIR_name[0] != 0);
-
-	//FAT OFFset is N * 4 since rootclust number is 2 which is 2 *4 = 8
-	//Fatsecnum =  BPB_RsvdSecCnt + (FAT OFFset / BPB_BytsPerSec)
-	// FATENTOFFSET = REM( FATOffset / BPB_BytsPerSec)
-	// Fatsec num is 32 which is BytesPerSec = 16384 = 4000
-	//FAT table starts at address 0x4000
-
-	lseek(f, 0x4000 + (directoryClust *4), SEEK_SET);
-        read(f,&clust_num, sizeof(clust_num));
-	directoryClust = clust_num;
-	 if(clust_num >= 0x0FFFFFF8 )
-			
-                        {
-                             printf("Error: No such directory \n");   
-				  break;
-                        }
-                        
-}
-
-return directoryClust;;
-
-}
-
-void pathAppend(int curr_clusterNum,char * pathName)
-{
-	environment.curr_clust_num = curr_clusterNum;
-	 strcpy((char *)environment.name, pathName);
-	strcpy(environment.curr_path[environment.curr], pathName); // add the name to the current path name
- //	environment.curr_clust_num = curr_clusterNum;  //set the current cluster number to the currclustnum in envir.
-        environment.curr_clust_path[environment.curr] = curr_clusterNum;
-        environment.curr++; // update
-
-}
-
-void deleteAppend()
-{
-if(environment.curr > 1)
-{
-environment.curr_clust_num = environment.curr_clust_path[environment.curr-2];
-strcpy((char*)environment.name, environment.curr_path[environment.curr -2]);
-environment.curr--;
-
-
-}
-
-
-}
-
-void openFile(char * fileName, char * fileMode)
-{
-if (strcmp(fileMode, "wr") != 0 && strcmp(fileMode, "rw") != 0 && strcmp(fileMode, "r") != 0 && strcmp(fileMode, "r") != 0)
-
-{
-printf("Incorrect mode, please use these options: r w rw wr\n");
-}
-
-
-
-}
-
-void FATOpen(char *fileName)
-{
-struct FileTable *pointer;
-
-
-
+	int firstSectorOfClust= (((clusterNum -2) * BPB_SecPerClus) + FirstDataSector) * BPB_BytsPerSec;
+	return firstSectorOfClust;
 
 }
 
@@ -575,42 +334,136 @@ void create(char* arg, int image){
 	DirEntry temp;
 	unsigned int eofValue = 0x0FFFFFF8;
 	unsigned int tempClus;
-	unsigned short lo;
-	unsigned short hi;
 	
-	/*
-	do{
-		tempClus++;
-		
-		pread(image, &clusValue, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + tempClus * 4);
-		printf("%s%u%s%u\n", "Cluster Number: ", tempClus, "     Value in cluster", clusValue);
-	}while(clusValue != 0);
-	*/
 	tempClus = nextEmptyClus(image);
 	
-	printf("%s%i\n", "This is getting printed: ", tempClus);
+	//printf("%s%i\n", "EmptyClus Found: ", tempClus);
+	
+	//Write to empty clus number EOFValue
 	pwrite(image, &eofValue, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + tempClus * 4);
 	
-	//temp.DIR_name = arg;
-	//temp.DIR_FstClusHI;
-	//temp.DIR_FstClusLO;
-	temp.DIR_FileSize = 0;
-	//printf("%u\n", temp.DIR_FstClusLO);
-	//printf("%u\n", temp.DIR_FstClusHI);
+	int i;
+	for(i = 0; i < strlen(arg); i++){
+		temp.DIR_name[i] = arg[i];
+	}
 	
-	//Putting the actual directory entry into the directory (What if the directory is full)
-	unsigned char firstBit;
+	//Pad name with spaces
+	for(i = strlen(arg); i < 11; i++){
+		temp.DIR_name[i] = 32;
+	}
+	
 	unsigned int byteOffSet;
 	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( tempClus - 2) * BPB_SecPerClus);
+	temp.DIR_FstClusLO = 0xFFFF & byteOffSet;
+	temp.DIR_FstClusHI = (byteOffSet >> 16) & 0xFFFF;
+	temp.DIR_FileSize = 0;
+	
+	//Putting the actual directory entry into the directory (What if the directory is full?)
+	
+	
+	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( environment.curr_clust_num - 2) * BPB_SecPerClus);
+	DirEntry itr;
 	
 	//Read throught the directory until an unnocupied space is found
 	while(1){
-		pread(image, &firstBit, 1, byteOffSet);
-		if(firstBit == 0){
+		pread(image, &itr, sizeof(itr), byteOffSet);
+		if(itr.DIR_name[0] == 0){
+			//Write new file into empty space
 			pwrite(image, &temp, sizeof(temp), byteOffSet);
+			return;
 		}
 		byteOffSet += 32;
 	};
+}
+
+void mkdir(char* arg, int image){
+	
+	
+	DirEntry temp;
+	unsigned int eofValue = 0x0FFFFFF8;
+	unsigned int tempClus;
+	
+	tempClus = nextEmptyClus(image);
+	
+	//printf("%s%i\n", "EmptyClus Found: ", tempClus);
+	
+	//Write to empty clus number EOFValue
+	pwrite(image, &eofValue, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + tempClus * 4);
+	
+	int i;
+	for(i = 0; i < strlen(arg); i++){
+		temp.DIR_name[i] = arg[i];
+	}
+	
+	//Pad name with spaces
+	for(i = strlen(arg); i < 11; i++){
+		temp.DIR_name[i] = 32;
+	}
+	
+	 
+	
+	//Putting the actual directory entry into the directory (What if the directory is full?)
+	
+	unsigned int byteOffSet;
+	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( tempClus - 2) * BPB_SecPerClus);
+	
+	temp.DIR_FstClusLO = 0xFFFF & byteOffSet;
+	temp.DIR_FstClusHI = (byteOffSet >> 16) & 0xFFFF;
+	temp.DIR_Attributes = 0x10;
+	temp.DIR_FileSize = 0;
+	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( environment.curr_clust_num - 2) * BPB_SecPerClus);
+		
+	DirEntry itr;
+	
+	//Read throught the directory until an unnocupied space is found
+	while(1){
+		pread(image, &itr, sizeof(itr), byteOffSet);
+		if(itr.DIR_name[0] == 0){
+			//Write new file into empty space
+			pwrite(image, &temp, sizeof(temp), byteOffSet);
+			break;
+		}
+		byteOffSet += 32;
+	};
+	
+	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( environment.curr_clust_num - 2) * BPB_SecPerClus);
+	
+	//Create parent direntry and enter values to cluster
+	DirEntry parent;
+	
+	strncpy(parent.DIR_name, "..         ", 11);
+	parent.DIR_FstClusLO = 0xFFFF & byteOffSet;
+	parent.DIR_FstClusHI = (byteOffSet >> 16) & 0xFFFF;
+	parent.DIR_Attributes = 0x10;
+	parent.DIR_FileSize = 0;
+	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( tempClus - 2) * BPB_SecPerClus);
+	pwrite(image, &parent, sizeof(parent), byteOffSet);
+	
+	//Insert current directory into cluster
+	strncpy(temp.DIR_name, ".          ", 11);
+	pwrite(image, &temp, sizeof(temp), byteOffSet + 32);
+}
+
+void ls(int image, unsigned int clusNum){
+	unsigned int byteOffSet;
+	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( clusNum - 2) * BPB_SecPerClus);
+	DirEntry tempDir;
+	
+	do{
+
+		pread(image, &tempDir, sizeof(DirEntry), byteOffSet);	//intake entire dir entry
+		if(tempDir.DIR_Attributes != 15){
+			int j;
+			for(j = 0; j < 11; j++){
+				if(tempDir.DIR_name[j] != ' ')
+					printf("%c", tempDir.DIR_name[j]);
+			}
+			printf(" ");
+			
+		}
+		byteOffSet += 32;
+	}while(tempDir.DIR_name[0] != 0);
+	printf("\n");
 }
 
 
@@ -625,7 +478,7 @@ int nextEmptyClus(int image){
 		
 		
 		pread(image, &clusValue, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + tempClus * 4);
-		printf("%s%u%s%u\n", "Cluster Number: ", tempClus, "     Value in cluster", clusValue);
+		//printf("%s%u%s%u\n", "Cluster Number: ", tempClus, "     Value in cluster", clusValue);
 	}while(clusValue != 0);
 	
 	return tempClus;

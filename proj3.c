@@ -75,6 +75,8 @@ void ls(int image, unsigned int clusNum);
 void lsName(char *name,int image, unsigned int clustNum);
 void pathAppend(int curr_clusterNum,char * pathName);
 void deleteAppend();
+void rm(int image, char* arg1);	//Second parameter is the name of file to delete
+
 int main() {
 	
 	
@@ -212,6 +214,11 @@ int main() {
 		if(strcmp(instr.tokens[0], "mkdir") == 0){
 			mkdir(instr.tokens[1], f);
 		}
+
+		if(strcmp(instr.tokens[0], "rm") == 0){
+			rm(f, instr.tokens[1]);
+		}
+
 		if(strcmp(instr.tokens[0], "ls") == 0)
  		{
  		if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
@@ -626,6 +633,24 @@ void deleteAppend()
  environment.curr--;
 
  }
+ }
+
+  void rm(int image, char* arg1)
+ {
+ 	unsigned int firstClusterNumber;
+	unsigned int dirAddress;
+
+	DirEntry tempDir;
+
+	//First we check if the file exists in the current directory
+	int found = 0;
+	int i = 0;
+
+
+
+ 	printf("rm selected\n");
+ 	printf("Arg 1 is:%s\n", arg1);
+
 
  }
 

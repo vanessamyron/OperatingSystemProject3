@@ -51,6 +51,8 @@ typedef struct {
 ENVIR environment;
 int FirstDataSector;
 struct FileFAT *head = NULL; 
+struct FileFAT *ptr;
+struct FileFAT *secondPtr = NULL;
 int f;
 
 unsigned short BPB_BytsPerSec;	
@@ -78,6 +80,7 @@ void pathAppend(int curr_clusterNum,char * pathName);
 void deleteAppend();
 void fileOpen(int image, char *fileName, char *mode);
 void addFile(int image, char *fileName, char *fileMode);
+void closeFile(char *fileName);
 int main() {
 	
 	
@@ -293,6 +296,16 @@ int main() {
 		}
 
 		}
+		if(strcmp(instr.tokens[0], "close") == 0){
+			if(instr.tokens[1] == NULL){
+			  printf("Error: Please write a filename.\n");
+			}
+			else 
+			{
+			closeFile(instr.tokens[1]);
+			}
+		}
+
 		clearInstruction(&instr);
 	}
 	
@@ -671,7 +684,7 @@ void fileOpen(int image, char *fileName, char *mode)
 	} 
 	else if(OpenFile(fileName) == 1)
 	{
-	printf("File is opened.\n");
+	printf("File is already opened.\n");
 
 	}
         else{	
@@ -754,6 +767,41 @@ void addFile(int image, char *fileName, char *fileMode)
 
 void closeFile(char *fileName)
 {
+char* space = " ";
+        int i;
+        for(i = strlen(fileName); i < 11; i++){
+                strcat(fileName, space);
+        }
 
+if(OpenFile(fileName) == 0)
+{
+
+printf("File is not opened.\n");
+
+}
+else
+{
+for(ptr = head; ptr !=NULL; secondPtr = ptr)
+{
+if(strncmp(ptr->fileName, fileName, 11)==0)
+{
+ if(secondPtr != NULL){
+secondPtr->next = ptr->next;
+
+}
+else
+{
+  head = ptr->next;
+
+
+}
+free(ptr);
+ptr = ptr->next;
+printf("File Closed\n");
+return;
+}
+}
+
+}
 
 }

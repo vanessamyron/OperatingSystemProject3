@@ -31,9 +31,11 @@ typedef struct{
 
 
 struct FileFAT{
- char fileName[50];
- char fileMode[10];
- struct FileFAT *next;
+int cluster;
+char fileName[50];
+char fileMode[10];
+struct FileFAT *next;
+struct FileFAT *previous;
  };
 
 
@@ -47,6 +49,8 @@ typedef struct {
 
 // Global Variables
 ENVIR environment;
+int FirstDataSector;
+struct FileFAT *head = NULL; 
 int f;
 
 unsigned short BPB_BytsPerSec;	
@@ -56,9 +60,6 @@ unsigned char BPB_NumFATs;
 unsigned int BPB_TotSec32;
 unsigned int BPB_FATSz32;	
 unsigned int BPB_RootClus;	
-
-int FirstDataSector;
-
 
 //Functions 
 
@@ -75,8 +76,8 @@ void ls(int image, unsigned int clusNum);
 void lsName(char *name,int image, unsigned int clustNum);
 void pathAppend(int curr_clusterNum,char * pathName);
 void deleteAppend();
-void rm(int image, char* arg1);	//Second parameter is the name of file to delete
-
+void fileOpen(int image, char *fileName, char *mode);
+void addFile(int image, char *fileName, char *fileMode);
 int main() {
 	
 	
@@ -124,7 +125,13 @@ int main() {
 			int j = 0;
 		while(j < environment.curr)
 		{
-			printf("%s/", j == 0 ? "" : environment.curr_path[j]);
+			if(j == 0){
+		        printf("%s/", "");
+			}
+			else
+			{
+			printf("%s/", environment.curr_path[j]);
+			}
 			j++;
 		}
 		printf("> ");
@@ -207,18 +214,13 @@ int main() {
 		}
 		
 		
-		if(strcmp(instr.tokens[0], "create") == 0){
+		if(strcmp(instr.tokens[0], "creat") == 0){
 			create(instr.tokens[1], f);
 		}
 
 		if(strcmp(instr.tokens[0], "mkdir") == 0){
 			mkdir(instr.tokens[1], f);
 		}
-
-		if(strcmp(instr.tokens[0], "rm") == 0){
-			rm(f, instr.tokens[1]);
-		}
-
 		if(strcmp(instr.tokens[0], "ls") == 0)
  		{
  		if(instr.tokens[1] != NULL && strcmp(instr.tokens[1], ".") !=0)
@@ -275,7 +277,22 @@ int main() {
 
 	        }
 		}
+		if(strcmp(instr.tokens[0], "open") == 0){
+		if(instr.tokens[1] == NULL)
+		{
+		printf("Error: please enter a file name and the mode.\n");
+		
+		}
+		else if(instr.tokens[2] == NULL)
+		{
+		 printf("Error: please enter a mode.\n");
 
+		}
+		else{
+		fileOpen(f, instr.tokens[1], instr.tokens[2]);
+		}
+
+		}
 		clearInstruction(&instr);
 	}
 	
@@ -633,24 +650,110 @@ void deleteAppend()
  environment.curr--;
 
  }
- }
-
-  void rm(int image, char* arg1)
- {
- 	unsigned int firstClusterNumber;
-	unsigned int dirAddress;
-
-	DirEntry tempDir;
-
-	//First we check if the file exists in the current directory
-	int found = 0;
-	int i = 0;
-
-
-
- 	printf("rm selected\n");
- 	printf("Arg 1 is:%s\n", arg1);
-
 
  }
 
+
+void fileOpen(int image, char *fileName, char *mode)
+{
+  DirEntry tempDir;
+        unsigned int x = environment.curr_clust_num;    //First cluster we check
+        unsigned int byteOffSet;
+        int clustNum;
+        char* space = " ";
+        int i;
+        for(i = strlen(fileName); i < 11; i++){
+                strcat(fileName, space);
+        }
+
+	if(strcmp(mode, "w") != 0 && strcmp(mode, "r") != 0 && strcmp(mode, "wr") != 0 && strcmp(mode, "rw") != 0){
+	printf("Incorrect mode. Please use one of these options: w, r, rw, wr \n");
+	} 
+	else if(OpenFile(fileName) == 1)
+	{
+	printf("File is opened.\n");
+
+	}
+        else{	
+        while(x < 0x0FFFFFF8){
+
+                byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( x - 2) * BPB_SecPerClus);
+
+                int i;
+
+                do{
+
+                        pread(image, &tempDir, sizeof(DirEntry), byteOffSet);   //intake entire dir entry
+                        if(tempDir.DIR_Attributes != 15){
+                                //Print size if name matches of directory matches arg
+                                if(strncmp(tempDir.DIR_name, fileName, 11) == 0)
+                                        {
+						if(tempDir.DIR_Attributes & 0x10)
+						{
+						 printf("Unable to open directory\n");
+						}
+						else{ 
+						printf("File opened in %s mode \n", mode);
+						addFile(image,fileName, mode);	
+						}		
+						return;
+					}
+                }
+                        byteOffSet += 32;
+                }while(tempDir.DIR_name[0] != 0);
+
+
+                pread(image, &x, 4, BPB_RsvdSecCnt * BPB_BytsPerSec + x * 4);   //Should read the value at $
+               
+
+        }
+	printf("File not found\n");
+ 	}
+}
+
+int OpenFile(char *file_name)
+{
+
+struct FileFAT *ptr;
+
+for(ptr = head; ptr !=NULL; ptr = ptr->next){
+	if(strncmp(ptr->fileName, file_name,11) == 0)
+	{				
+		return 1;
+	}
+
+}
+return 0;
+
+
+}
+void addFile(int image, char *fileName, char *fileMode)
+{
+	int size = sizeof(struct FileFAT);
+	struct FileFAT *ptrTemp = calloc(1, size);
+	strcpy(ptrTemp->fileName, fileName);
+	strcpy(ptrTemp->fileMode, fileMode);
+	ptrTemp->next = NULL;
+	if(head == NULL){
+	head = ptrTemp;
+	ptrTemp->previous = head;
+	
+	}
+	else {
+	 struct FileFAT *ptr = head;
+	while(ptr->next != NULL){
+		ptr->previous = ptr;
+		ptr = ptr->next; // iterate 
+	}
+
+		ptr->next = ptrTemp;
+	}
+
+
+}
+
+void closeFile(char *fileName)
+{
+
+
+}

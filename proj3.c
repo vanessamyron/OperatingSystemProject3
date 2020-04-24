@@ -76,6 +76,7 @@ void mkdir(char* arg, int image);
 int nextEmptyClus(int image);
 void ls(int image, unsigned int clusNum);
 void lsName(char *name,int image, unsigned int clustNum);
+int cd(char *name, int image, unsigned int dirClustNum);
 void pathAppend(int curr_clusterNum,char * pathName);
 void deleteAppend();
 void fileOpen(int image, char *fileName, char *mode);
@@ -598,7 +599,7 @@ int cd(char *name, int image, unsigned int dirClustNum)
                         pread(image, &tempDir, sizeof(DirEntry), byteOffSet);   //intake entire dir entry
                         if(tempDir.DIR_Attributes != 15){
                                 //Print size if name matches of directory matches arg
-                                if(strncmp(tempDir.DIR_name, name, 11) == 0)
+                                if(tempDir.DIR_Attributes & 0x10 && strncmp(tempDir.DIR_name, name, 11) == 0)
                                         return 0x100 * tempDir.DIR_FstClusHI + tempDir.DIR_FstClusLO;
                 }
                         byteOffSet += 32;
@@ -611,7 +612,7 @@ int cd(char *name, int image, unsigned int dirClustNum)
         }
 	if(x >= 0x0FFFFFF8)
 	{
-	printf("File not in existence\n");
+	printf("Not a directory/ Directory does not exist\n");
 	return -1;
 	}
 return dirClustNum;	
@@ -805,3 +806,4 @@ return;
 }
 
 }
+//readFile(int image, char *fileName, char *fileMode)

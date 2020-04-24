@@ -67,11 +67,10 @@ int nextEmptyClus(int image);
 int cd(char *name, int directoryClust);
 void ls(int image, unsigned int clusNum);
 void mv(char* arg1, char* arg2, int image);
-DirEntry createEmptyDirEntry();
+void createEmptyDirEntry(int image, unsigned int offSet);
 
 int main() {
 	
-	printf("%i\n", sizeof(DirEntry));
 	int f = open("fat32.img", O_RDWR);
 	pread(f, &BPB_BytsPerSec, 2, 11);
 	pread(f, &BPB_SecPerClus, 1, 13);
@@ -225,7 +224,6 @@ int main() {
 		}
 		
 		
-		
 		clearInstruction(&instr);
 	}
 	
@@ -367,6 +365,13 @@ void create(char* arg, int image){
 	temp.DIR_FstClusLO = 0xFFFF & byteOffSet;
 	temp.DIR_FstClusHI = (byteOffSet >> 16) & 0xFFFF;
 	temp.DIR_FileSize = 0;
+	temp.DIR_NTRes = 0;
+	temp.DIR_CrtTimeTenth = 0;
+	temp.DIR_CrtTime = 0;
+	temp.DIR_CrtDate = 0;
+	temp.DIR_LstAccDate = 0;
+	temp.DIR_WrtTime = 0;
+	temp.DIR_WrtDate = 0;
 	
 	//Putting the actual directory entry into the directory (What if the directory is full?)
 	
@@ -421,6 +426,14 @@ void mkdir(char* arg, int image){
 	temp.DIR_FstClusHI = (byteOffSet >> 16) & 0xFFFF;
 	temp.DIR_Attributes = 0x10;
 	temp.DIR_FileSize = 0;
+	temp.DIR_NTRes = 0;
+	temp.DIR_CrtTimeTenth = 0;
+	temp.DIR_CrtTime = 0;
+	temp.DIR_CrtDate = 0;
+	temp.DIR_LstAccDate = 0;
+	temp.DIR_WrtTime = 0;
+	temp.DIR_WrtDate = 0;
+	
 	byteOffSet = BPB_BytsPerSec * (FirstDataSector + ( environment.curr_clust_num - 2) * BPB_SecPerClus);
 		
 	DirEntry itr;
@@ -566,9 +579,9 @@ void mv(char* arg1, char* arg2, int image){
 		DirEntry empDir;
 		
 				
-		empDir = createEmptyDirEntry();	//Create a directory full of zeros
+		createEmptyDirEntry(image, arg1OffSet);	//Create a directory full of zeros
 		
-		pwrite(image, &empDir, 32, arg1OffSet);	//fill arg1 space in curr directory with zeros
+		//pwrite(image, &empDir, 32, arg1OffSet);	//fill arg1 space in curr directory with zeros
 		
 		unsigned int arg2Address;
 		arg2Address = (arg2Dir.DIR_FstClusHI<<16)+arg2Dir.DIR_FstClusLO;	//compute address of cluster
@@ -611,12 +624,14 @@ int nextEmptyClus(int image){
 	
 }
 
-DirEntry createEmptyDirEntry(){
+void createEmptyDirEntry(int image, unsigned int offSet){
 	DirEntry temp;
 	
 	int i;
+	
 	for( i = 0; i < 11; i++){
 		temp.DIR_name[i] = 0;
+		//printf("%u%s", temp.DIR_name, " ");
 	}
 	
 	temp.DIR_Attributes = 0;
@@ -630,4 +645,6 @@ DirEntry createEmptyDirEntry(){
 	temp.DIR_WrtDate = 0;
 	temp.DIR_FstClusLO = 0;
 	temp.DIR_FileSize = 0;
+	
+	pwrite(image, &temp, 32, offSet);
 }

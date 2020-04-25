@@ -265,7 +265,22 @@ int main() {
 
 
  		}
-    	
+
+ 		if(strcmp(instr.tokens[0], "rm") == 0){
+ 			rm(f, environment.curr_clust_num, instr.tokens[1]);
+    	}
+
+    	 if(strcmp(instr.tokens[0], "cp") == 0){
+ 			if(instr.tokens[1] == NULL){	//No Filename provide, print error
+ 				printf("Error, no filename provided");
+ 			}
+ 			else if(instr.tokens[2] == NULL){	//Case of no TO arg
+ 				cp(f, instr.tokens[1],  "TO");
+ 			}
+ 			else{							//Case of TO arg
+ 				cp(f, instr.tokens[1], instr.tokens[2]);
+ 			}
+ 		}
 
 		if(strcmp(instr.tokens[0], "cd") == 0){
 			if(instr.tokens[1] == NULL){
@@ -974,4 +989,72 @@ void createEmptyDirEntry(int image, unsigned int offSet){
 	temp.DIR_FileSize = 0;
 	
 	pwrite(image, &temp, 32, offSet);
+}
+
+
+void rm(int image, unsigned int clusNum, char* fileName){
+ 	char* space = " ";
+ 	int flag = 0;
+ 	int i;
+ 	for(i = strlen(fileName); i<11; i++){	//Need to pad so its 11 characters long
+ 		strcat(fileName, space);
+ 	}
+
+ 	//First check file exists
+ 	DirEntry tempDir;
+ 	unsigned int byteOffset;
+ 	byteOffset = firstSectorOfCluster(clusNum);
+ 	do{
+ 		pread(image, &tempDir, sizeof(DirEntry), byteOffset);
+ 		if(tempDir.DIR_Attributes & 0x10){	//Tried removing a directory not file
+ 			printf("Cannot rm a directory\n");
+ 			return;
+ 		}
+ 		if(strncmp(tempDir.DIR_name, fileName, 11) == 0){
+ 			//printf("It matches!\n");
+ 			flag = 1;
+ 			break;
+ 		}
+ 		byteOffset += 32;
+
+ 	}while(tempDir.DIR_name[0] != 0);
+
+ 	if(flag == 0){	//Not found
+ 		printf("File doesn't exist\n");
+ 		return;
+ 	}
+
+ 	//If it reaches here the file was found
+
+
+ 	//Grab our address for the first cluster of data
+ 	unsigned short lo = tempDir.DIR_FstClusLO;
+ 	unsigned short hi = tempDir.DIR_FstClusHI;
+
+ 	//addr contains our first data cluster
+ 	unsigned int addr = (hi << 16) + lo;
+ 	//DirEntry emptyDir;
+ 	//emptyDir = createEmptyDirEntry(image, addr);
+ 	//pwrite(image, &emptyDir, 32, byteOffset);
+
+ 	//Effectively overwrites it with zeroes
+ 	createEmptyDirEntry(image, byteOffset);
+
+ 	unsigned int N;
+ 	unsigned int empty = 00000000;
+
+ 	N = ((addr - FirstDataSector)/(BPB_SecPerClus));
+ 	//offset is the addr
+ 	//N = ((offset-FirstDataSector)/(BPB_SECPERCLUS))+2
+ 	//P read 4, for the bytes
+ 	//Second arg unsigned int with 8 zeros
+ 	pread(image, &tempDir, sizeof(DirEntry), N);
+	
+
+
+
+ }
+
+void cp(int image, char* filename, char* to){
+	printf("cp %s %s", filename, to);
 }

@@ -38,4 +38,5 @@ This project was tested using Linprog, to compile have the proj3.c, makefile, an
 Known Bugs/Unfinished Portions of the project:
 -couldnt get a working implementation of cp, so it just prints out the command and arguments when used
 -Couldnt get read or write completed
+-Couldnt get open working
 -Adding DirEntries to a directory will not allocated a new cluster, so if one is added in the 16th position a directory is full and will not be able to add anymore without creating corrupt data.

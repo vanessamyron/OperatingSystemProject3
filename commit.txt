@@ -1,0 +1,176 @@
+commit 9524611d73c25d70a7603ed3d82d47e39d030892
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Fri Apr 24 17:33:31 2020 -0400
+
+    With Cameron's rm
+
+commit f7729d86f9a2f8aca9b0ad2bc1888ade4d278b2e
+Merge: eadd8c7 1ee8992
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Fri Apr 24 17:04:25 2020 -0400
+
+    Updated error checking in cd
+    
+    Error checking for "not a directory" in cd
+
+commit eadd8c77776b0059daa03ed4bec0f4d5225bc585
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Fri Apr 24 17:00:54 2020 -0400
+
+    Error Checking
+    
+    Added error checking for not a directory in cd
+
+commit 1ee8992429fc9a931c8bbdd7d61656d3517bf661
+Author: Cameron Heffelfinger <cjh17h@my.fsu.edu>
+Date:   Thu Apr 23 22:38:23 2020 -0400
+
+    Added rm function
+    
+    Added beginning of rm function. Doesnt yet remove but it tests if file exists in directory or not
+
+commit b148e402b869ac3e3f7a7ad69b638a37ab3c79cb
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Thu Apr 23 01:37:56 2020 -0400
+
+    Close function
+    
+     Finished closing the file.
+
+commit 1b22c39f747bcdb9507f0ac551be07b959d4c125
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Thu Apr 23 00:39:47 2020 -0400
+
+    Revert "Create readme.txt"
+    
+    This reverts commit 3722f15d5f64bb2877e8e55628fff3112e007c0a.
+
+commit 88ed7352e04f0b4695029da28978805a0e13feae
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Thu Apr 23 00:39:21 2020 -0400
+
+    Open
+    
+    Worked on Open. Currently working on close
+
+commit ea3e4778a4a9476e5a8129d23333a112c89d17ed
+Merge: 3722f15 55df68d
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Thu Apr 23 00:38:42 2020 -0400
+
+    Merge branch 'master' of https://github.com/cameronheff/OpSysProject3
+
+commit 3722f15d5f64bb2877e8e55628fff3112e007c0a
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Thu Apr 23 00:38:39 2020 -0400
+
+    Create readme.txt
+    
+    Read me by Cameron
+
+commit 55df68deedfd0a12dc0150e27b9d1aeeae4597ec
+Author: Cameron Heffelfinger <cjh17h@my.fsu.edu>
+Date:   Wed Apr 22 21:46:47 2020 -0400
+
+    Create readme.txt
+    
+    Created project Readme
+
+commit 27b9ea494401117d1421c9b04ed11236b443303d
+Author: Cameron Heffelfinger <cjh17h@my.fsu.edu>
+Date:   Wed Apr 22 21:35:37 2020 -0400
+
+    Update proj3.c
+    
+    Initial rm commit
+
+commit 86d0c131d4f02f9e2a2a03a90568b1c6ae085ad8
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Tue Apr 21 19:35:30 2020 -0400
+
+    Proj3.c with cd, lsName and Makefile
+    
+    Removed the space that was added into the path in pathAppend. CD works now. Included the Makefile
+
+commit 89a08ecc389f4429c78ff05ae45e3940c3e00ad4
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Mon Apr 20 23:19:43 2020 -0400
+
+    Removed cd header
+
+commit 73c553017f0e73836da85ae008753b23d1518d12
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Mon Apr 20 23:19:17 2020 -0400
+
+    Added ls function
+
+commit 79a8528d70f22d3216c47715b2e9fd307a58c994
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Mon Apr 20 20:30:10 2020 -0400
+
+    Update proj3.c
+    
+    Updated cd
+
+commit b9e3cd00cadbb724d1bd4525ada4d3c3831f96ad
+Merge: 14ca4c8 fa73f34
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Mon Apr 20 19:45:30 2020 -0400
+
+    Update proj3.c
+    
+    Worked on the cd and ls function. Still having trouble with the ls function. This also has the open file function that I'm still working on
+
+commit fa73f34e1c8c985766cd611c47ad0225e58de19f
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Mon Apr 20 01:28:53 2020 -0400
+
+    Size function works and beginning of Create added
+
+commit 14ca4c8b96a82a0909889b35e87103b52e523f81
+Author: vanessamyron <vanessa.myron@yahoo.co.uk>
+Date:   Fri Apr 17 19:09:22 2020 -0400
+
+    Updated proj3.c
+    
+    Worked on the environment path and switched from fseek to lseek
+
+commit e35d76784fb2f196b3f5096ab47562d0228e76c0
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Thu Apr 16 18:01:12 2020 -0400
+
+    Added Exit function
+
+commit 4805996011d597f51911ef807736a08708890721
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Thu Apr 16 17:01:30 2020 -0400
+
+    Combined code with info and ls
+
+commit cc4b559ce920c9751b3a793e6ad8b5bb8c0468bb
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Thu Apr 16 15:45:24 2020 -0400
+
+    Info now works properly
+    
+    I removed the BPB structure as it was only necessary if the info function was created differently
+
+commit 5c9a329b22aa6d4ec5185402f2a543a47db703c7
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Wed Apr 15 17:16:07 2020 -0400
+
+    Fixed Syntax Error
+
+commit b3b5a9548e9a9ed3f02ce5b87e430a89137bfd86
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Wed Apr 15 17:07:19 2020 -0400
+
+    Added DIR_Entry struct and BPB struct
+
+commit efd32dbb513d0cd6298244e8bf60231303da5c8b
+Author: JacobRHobson <37195935+JacobRHobson@users.noreply.github.com>
+Date:   Wed Apr 15 15:42:41 2020 -0400
+
+    Uploaded intake
+    
+    There is a place to put your functions under the "size" if  statement

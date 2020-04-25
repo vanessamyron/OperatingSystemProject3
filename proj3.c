@@ -83,6 +83,7 @@ void fileOpen(int image, char *fileName, char *mode);
 void addFile(int image, char *fileName, char *fileMode);
 void closeFile(char *fileName);
 void rm(int image, unsigned int clusNum, char* arg1);
+void createEmptyDirEntry(int image, unsigned int offSet);
 int main() {
 	
 	
@@ -824,8 +825,12 @@ void rm(int image, unsigned int clusNum, char* fileName){
  	byteOffset = firstSectorOfCluster(clusNum);
  	do{
  		pread(image, &tempDir, sizeof(DirEntry), byteOffset);
+ 		if(tempDir.DIR_Attributes & 0x10){	//Tried removing a directory not file
+ 			printf("Cannot rm a directory\n");
+ 			return;
+ 		}
  		if(strncmp(tempDir.DIR_name, fileName, 11) == 0){
- 			printf("It matches!\n");
+ 			//printf("It matches!\n");
  			flag = 1;
  			break;
  		}
@@ -842,15 +847,50 @@ void rm(int image, unsigned int clusNum, char* fileName){
  	unsigned short hi = tempDir.DIR_FstClusHI;
  	unsigned int addr = (hi << 16) + lo;
  	DirEntry emptyDir;
- 	//emptyDir = createEmptyDirEntry();
+ 	//emptyDir = createEmptyDirEntry(image, addr);
  	//pwrite(image, &emptyDir, 32, byteOffset);
+ 	createEmptyDirEntry(image, byteOffset);
 
+ 	unsigned int N;
+ 	unsigned int empty = 00000000;
+
+ 	N = ((addr - FirstDataSector)/(BPB_SecPerClus));
  	//offset is the addr
  	//N = ((offset-FirstDataSector)/(BPB_SECPERCLUS))+2
  	//P read 4, for the bytes
  	//Second arg unsigned int with 8 zeros
+ 	pread(image, &tempDir, sizeof(DirEntry), N);
+
 
 
 
  }
 //readFile(int image, char *fileName, char *fileMode)
+
+
+ void createEmptyDirEntry(int image, unsigned int offSet){
+	DirEntry temp;
+	
+	int i;
+	
+	for( i = 0; i < 11; i++){
+		temp.DIR_name[i] = 0;
+		//printf("%u%s", temp.DIR_name, " ");
+	}
+	
+	temp.DIR_Attributes = 0;
+	temp.DIR_NTRes = 0;
+	temp.DIR_CrtTimeTenth = 0;
+	temp.DIR_CrtTime = 0;
+	temp.DIR_CrtDate = 0;
+	temp.DIR_LstAccDate = 0;
+	temp.DIR_FstClusHI = 0;
+	temp.DIR_WrtTime = 0;
+	temp.DIR_WrtDate = 0;
+	temp.DIR_FstClusLO = 0;
+	temp.DIR_FileSize = 0;
+	
+	pwrite(image, &temp, 32, offSet);
+}
+
+

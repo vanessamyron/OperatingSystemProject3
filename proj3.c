@@ -84,6 +84,7 @@ void addFile(int image, char *fileName, char *fileMode);
 void closeFile(char *fileName);
 void rm(int image, unsigned int clusNum, char* arg1);
 void createEmptyDirEntry(int image, unsigned int offSet);
+void cp(int image, char* fileName, char* to);
 int main() {
 	
 	
@@ -310,6 +311,17 @@ int main() {
 		}
 		if(strcmp(instr.tokens[0], "rm") == 0){
  			rm(f, environment.curr_clust_num, instr.tokens[1]);
+ 		}
+ 		if(strcmp(instr.tokens[0], "cp") == 0){
+ 			if(instr.tokens[1] == NULL){	//No Filename provide, print error
+ 				printf("Error, no filename provided")
+ 			}
+ 			else if(instr.tokens[2] == NULL){	//Case of no TO arg
+ 				cp(f, instr.tokens[1],  "TO");
+ 			}
+ 			else{							//Case of TO arg
+ 				cp(f, instr.tokens[1], instr.tokens[2]);
+ 			}
  		}
 		clearInstruction(&instr);
 	}
@@ -843,12 +855,20 @@ void rm(int image, unsigned int clusNum, char* fileName){
  		return;
  	}
 
+ 	//If it reaches here the file was found
+
+
+ 	//Grab our address for the first cluster of data
  	unsigned short lo = tempDir.DIR_FstClusLO;
  	unsigned short hi = tempDir.DIR_FstClusHI;
+
+ 	//addr contains our first data cluster
  	unsigned int addr = (hi << 16) + lo;
- 	DirEntry emptyDir;
+ 	//DirEntry emptyDir;
  	//emptyDir = createEmptyDirEntry(image, addr);
  	//pwrite(image, &emptyDir, 32, byteOffset);
+
+ 	//Effectively overwrites it with zeroes
  	createEmptyDirEntry(image, byteOffset);
 
  	unsigned int N;
@@ -860,7 +880,7 @@ void rm(int image, unsigned int clusNum, char* fileName){
  	//P read 4, for the bytes
  	//Second arg unsigned int with 8 zeros
  	pread(image, &tempDir, sizeof(DirEntry), N);
-
+	
 
 
 
@@ -893,4 +913,7 @@ void rm(int image, unsigned int clusNum, char* fileName){
 	pwrite(image, &temp, 32, offSet);
 }
 
+void cp(int image, char* filename, char* to){
+	printf("cp ")
+}
 

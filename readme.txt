@@ -5,14 +5,15 @@ Jacob Hobson
 Vanessa Myron
 
 Division of Labor:
+Implimentation for Instruction intake: Jacob
 exit: Jacob
 info: Jacob
 size: Jacob
 ls: Vanessa
 cd: Vanessa
-create: 
-mkdir: 
-mv: 
+create:Jacob  
+mkdir: Jacob
+mv: Jacob
 open: Vanessa
 close: Vanessa
 read: Not Implemented

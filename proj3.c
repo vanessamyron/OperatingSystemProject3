@@ -314,7 +314,7 @@ int main() {
  		}
  		if(strcmp(instr.tokens[0], "cp") == 0){
  			if(instr.tokens[1] == NULL){	//No Filename provide, print error
- 				printf("Error, no filename provided")
+ 				printf("Error, no filename provided");
  			}
  			else if(instr.tokens[2] == NULL){	//Case of no TO arg
  				cp(f, instr.tokens[1],  "TO");
@@ -914,6 +914,6 @@ void rm(int image, unsigned int clusNum, char* fileName){
 }
 
 void cp(int image, char* filename, char* to){
-	printf("cp ")
+	printf("cp %s %s", filename, to);
 }
 
